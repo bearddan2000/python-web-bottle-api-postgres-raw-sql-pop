@@ -1,0 +1,38 @@
+version: '3.4'
+services:
+
+  db:
+    image: postgres:alpine
+    environment:
+      - POSTGRES_DB=beverage
+      - POSTGRES_USER=maria
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - ./db/sql:/docker-entrypoint-initdb.d
+
+  py-srv:
+    build:
+      context: py-srv
+    ports:
+      - 80:8000
+    healthcheck:
+      test: "exit 0"
+    command: python app.py
+    depends_on:
+      - db
+    links:
+      - "db:db"
+
+  py-test-srv:
+    build:
+      context: py-test-srv
+    command: sh -c "/wait && python app.py"
+    environment:
+      - WAIT_HOSTS=py-srv:8000
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=30
+      - WAIT_HOST_CONNECT_TIMEOUT=30
+    depends_on:
+      - py-srv
+    links:
+      - "py-srv:py-srv"
